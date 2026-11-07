@@ -1,29 +1,23 @@
 # Architecture
 
-## Purpose
+`ocr_pipeline` implements an extensible, pure-Python OCR preprocessing and execution pipeline without third-party dependencies.
 
-`trysac-ocr-pipeline` is a small, dependency-free Python library: OCR pipeline core: decode PNM and PNG to grayscale, median, Otsu and deskew preprocessing, an injected OCR engine port and line assembly
+## Components
 
-## Shape
+1. **Decoders (`load_image`)**:
+   - PNM parser (P2 ASCII grayscale, P5 binary grayscale, P3 ASCII RGB, P6 binary RGB).
+   - PNG parser supporting 8-bit Gray, Gray+Alpha, RGB, and RGBA with all 5 filter types (None, Sub, Up, Average, Paeth) and alpha compositing over white.
+   - Hard limit enforcement on byte length and maximum pixel count before memory allocation.
 
-```text
-caller code --> ocr_pipeline (public API in __init__.py)
-                    |
-                    +-- pure functions, no I/O, no global state
-```
+2. **Preprocessing (`preprocess`, `rotate`)**:
+   - `invert_if_dark`: Inverts images if overall luminosity mean < 128.
+   - `median3`: 3x3 median filter with border edge replication.
+   - `otsu`: Fast histogram-based thresholding calculating optimal between-class variance.
+   - `deskew`: Angular scan using row projection variance on dark pixels with deterministic tie-breaking.
 
-- **Public API**: the names listed in `__all__` of `src/ocr_pipeline/__init__.py`. Anything else is
-  internal and may change without a major version.
-- **Errors**: invalid input raises built-in exceptions (`ValueError`, `TypeError`) with a clear
-  message; the library never prints or exits.
-- **Side effects**: none. If a feature needs I/O, isolate it in its own module behind a small
-  interface and record the choice in an ADR.
-
-## Quality contract
-
-`scripts/check.py` is the single definition of the gates; `fabrica.json` tells the factory and CI
-how to run it. See [TESTING.md](TESTING.md).
-
-## Decisions
-
-Architecture decisions are recorded in [decisions/](decisions/) as numbered ADRs.
+3. **Line Assembly & Execution (`run_ocr`)**:
+   - Calls injected `OcrEngine` implementing `recognize(GrayImage) -> Sequence[Word]`.
+   - Filters low-confidence words (< `min_confidence`).
+   - Groups words into reading lines based on vertical overlap against the line's median height.
+   - Orders lines vertically and words horizontally within each line.
+   - Dispatches step events without leaking sensitive recognized text.

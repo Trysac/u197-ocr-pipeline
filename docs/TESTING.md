@@ -3,18 +3,15 @@
 ## Running
 
 ```sh
-uv run pytest --cov=ocr_pipeline   # tests with coverage report
-uv run python scripts/check.py      # every gate, as CI and the factory run it
+uv run pytest --cov=ocr_pipeline
 ```
 
-## Policy
+## Coverage
 
-- Branch coverage of `src/ocr_pipeline` must stay at or above 80 %; the gate fails below it.
-- Tests exercise the public API (`import ocr_pipeline`) and assert every observable effect:
-  return values, raised exceptions and their messages.
-- Each bug fix starts with a failing test that reproduces it.
-- Tests are deterministic: no network, no wall clock, no dependence on test order.
+Tests are located in `tests/test_ocr_pipeline.py`. They cover:
 
-## Layout
-
-`tests/test_<module>.py` mirrors each public module. Shared fixtures go in `tests/conftest.py`.
+- **PNM Decoding**: Validation of P2, P5, P3, and P6 formats, handling of comments, and scaling of maxval < 255.
+- **PNG Decoding**: Support for 8-bit Gray, Gray+Alpha, RGB, and RGBA; verification of filter types 0-4 (Paeth); detection of interlaced PNGs.
+- **Preprocessing**: Functional verification of `invert_if_dark`, `median3` (including edge replication), `otsu` (histogram maximization), and `deskew` (variance of row sums).
+- **Line Assembly**: Sorting by bbox top, grouping by median height overlap, and reordering within lines by left coordinate.
+- **Engine Integration**: Verification of `FakeOcr` call recording, error wrapping for engine failures, and confidence filtering/event emission.
