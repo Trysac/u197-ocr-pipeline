@@ -9,4 +9,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Pure Python OCR pipeline with PNM/PNG decoders, Otsu thresholding, median filtering, deskewing, line assembly, and test double FakeOcr.
 - Initial project structure from the factory utility template.

@@ -1,48 +1,40 @@
 # ocr-pipeline
 
-[![PyPI version](https://img.shields.io/pypi/v/trysac-ocr-pipeline)](https://pypi.org/project/trysac-ocr-pipeline/)
-[![License: MIT](https://img.shields.io/pypi/l/trysac-ocr-pipeline)](LICENSE)
 [![CI](https://github.com/Trysac/u197-ocr-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/Trysac/u197-ocr-pipeline/actions/workflows/ci.yml)
 
-OCR pipeline core: decode PNM and PNG to grayscale, median, Otsu and deskew preprocessing, an injected OCR engine port and line assembly
+OCR pipeline core: pure-Python decoding of PNM and PNG to grayscale, median filtering, Otsu binarization, deskewing, line assembly, and an injected OCR engine port.
 
-## Problem
+## The Problem
 
-Describe in two or three sentences the concrete problem this utility solves, who hits it, and what
-they do today without it. Replace this paragraph when the first real feature lands.
+OCR quality depends more on preprocessing than on the engine: skewed, noisy or dark scans produce garbage, and pipelines glue ad hoc image steps to an engine call with no tests. Engines such as Tesseract are external binaries that make tests slow and platform-dependent. This library implements the preprocessing steps as tested pure functions on grayscale images and calls the engine through a small injected port.
 
-## Install
+## Installation
 
-```sh
+```bash
 pip install trysac-ocr-pipeline
-# or
-uv add trysac-ocr-pipeline
 ```
-
-Requires Python 3.10 or newer. No runtime dependencies.
 
 ## Usage
 
 ```python
-import ocr_pipeline
+from ocr_pipeline import GrayImage, Word, FakeOcr, run_ocr
 
-# normalize() trims surrounding whitespace and lower-cases the text.
-print(ocr_pipeline.normalize("  Hello World "))  # -> "hello world"
-
-# Blank input is rejected explicitly instead of returning an empty string.
-try:
-    ocr_pipeline.normalize("   ")
-except ValueError as exc:
-    print(f"rejected: {exc}")
+img = GrayImage(width=100, height=20, pixels=bytes([255] * 2000))
+engine = FakeOcr([Word("Hello", 98.0, (0, 0, 50, 18)), Word("World", 95.0, (55, 0, 40, 18))])
+result = run_ocr(img, engine, steps=("invert_if_dark", "otsu"))
+print(result.text)
 ```
 
-## Documentation
+## API Summary
 
-- [Architecture](docs/ARCHITECTURE.md) and [decisions](docs/decisions/)
-- [Testing](docs/TESTING.md) and [security](docs/SECURITY.md)
-- [Project record](docs/PROJECT.md) and [stack](docs/STACK.md)
-- [Changelog](CHANGELOG.md) and [contributing guide](CONTRIBUTING.md)
+- `load_image(data: bytes, *, max_pixels: int = 2_000_000, max_bytes: int = 50_000_000) -> GrayImage`: Decodes PNM (P2, P3, P5, P6) or PNG (8-bit Gray, RGB, RGBA) images. Raises `unsupported_image` for unsupported types or `too_large` if limits are exceeded.
+- `rotate(img: GrayImage, degrees: float) -> GrayImage`: Rotates an image about its center (nearest neighbor, positive = counter-clockwise).
+- `preprocess(img: GrayImage, steps: Sequence[Step] = (...), *, max_angle: float = 5.0, angle_step: float = 0.5) -> Preprocessed`: Runs an ordered sequence of preprocessing steps. Raises `invalid_option` for bad steps or parameters.
+- `OcrEngine(Protocol)`: Interface for custom engine adapters.
+- `run_ocr(...) -> OcrResult`: Orchestrates preprocessing, engine recognition, confidence filtering, and line assembly. Raises `engine_failed` if the engine raises an exception.
 
-## License
+## Why not Tesseract directly?
 
-[MIT](LICENSE) (c) 2026 Miguel Gomez
+This library provides tested, isolated, pure-Python preprocessing steps and an engine-agnostic port, avoiding platform-dependent binary dependencies and providing deterministic control over the image stream.
+
+See [docs/SECURITY.md](docs/SECURITY.md) for vulnerability reporting.
