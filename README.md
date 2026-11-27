@@ -10,8 +10,10 @@ OCR quality depends more on preprocessing than on the engine: skewed, noisy or d
 
 ## Installation
 
+Not published to PyPI yet. Install it from GitHub:
+
 ```bash
-pip install trysac-ocr-pipeline
+pip install "git+https://github.com/Trysac/u197-ocr-pipeline"
 ```
 
 ## Usage
